@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Light Executor — Fast, Lightweight & Powerful</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --yellow: #FFD600; --yellow-dark: #E6C000; --black: #111111; --dark: #1A1A1A;
+      --white: #FFFFFF; --grey-light: #F7F7F7; --grey: #ECECEC; --text-muted: #777;
+      --radius: 14px; --radius-sm: 8px;
+      --shadow-yellow: 0 8px 40px rgba(255,214,0,0.25);
+      --transition: 0.3s cubic-bezier(0.4,0,0.2,1);
+    }
+    html { scroll-behavior: smooth; }
+    body { font-family: 'Poppins', sans-serif; background: var(--white); color: var(--black); overflow-x: hidden; -webkit-font-smoothing: antialiased; }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--black); }
+    ::-webkit-scrollbar-thumb { background: var(--yellow); border-radius: 99px; }
+
+    /* ─── UTILITY ─── */
+    .container { max-width: 1160px; margin: 0 auto; padding: 0 24px; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 14px 32px; border-radius: 99px; font-family: 'Poppins', sans-serif;
+      font-weight: 600; font-size: 0.95rem; cursor: pointer; border: none;
+      transition: var(--transition); text-decoration: none; letter-spacing: 0.01em;
+      position: relative; overflow: hidden;
+    }
+    .btn::after { content:''; position:absolute; inset:0; opacity:0; background:rgba(255,255,255,0.15); transition:var(--transition); }
+    .btn:hover::after { opacity:1; }
+    .btn-yellow { background: var(--yellow); color: var(--black); box-shadow: var(--shadow-yellow); }
+    .btn-yellow:hover { transform: translateY(-2px); box-shadow: 0 12px 48px rgba(255,214,0,0.4); }
+    .btn-outline { background: transparent; color: var(--white); border: 2px solid rgba(255,255,255,0.25); }
+    .btn-outline:hover { border-color: var(--yellow); color: var(--yellow); transform: translateY(-2px); }
+    .section-label {
+      display: inline-block; font-size: 0.72rem; font-weight: 700; letter-spacing: 0.15em;
+      text-transform: uppercase; color: var(--yellow); background: rgba(255,214,0,0.1);
+      padding: 5px 14px; border-radius: 99px; margin-bottom: 16px; border: 1px solid rgba(255,214,0,0.25);
+    }
+    .section-label-dark { color: var(--black); background: rgba(0,0,0,0.06); border-color: rgba(0,0,0,0.1); }
+    .fade-in { opacity:0; transform:translateY(28px); transition: opacity 0.7s ease, transform 0.7s ease; }
+    .fade-in.visible { opacity:1; transform:translateY(0); }
+    .fade-in-delay-1 { transition-delay:0.1s; }
+    .fade-in-delay-2 { transition-delay:0.2s; }
+    .fade-in-delay-3 { transition-delay:0.3s; }
+    .fade-in-delay-4 { transition-delay:0.4s; }
+
+    /* ─── NAVBAR ─── */
+    nav {
+      position:fixed; top:0; left:0; right:0; z-index:1000;
+      padding:0 24px; height:70px; display:flex; align-items:center;
+      background:rgba(17,17,17,0.85); backdrop-filter:blur(18px) saturate(1.4);
+      -webkit-backdrop-filter:blur(18px) saturate(1.4);
+      border-bottom:1px solid rgba(255,255,255,0.06); transition:var(--transition);
+    }
+    nav.scrolled { background:rgba(17,17,17,0.97); }
+    .nav-inner { max-width:1160px; margin:0 auto; width:100%; display:flex; align-items:center; justify-content:space-between; }
+    .nav-logo { display:flex; align-items:center; gap:10px; text-decoration:none; color:var(--white); }
+    .nav-logo-icon { width:36px; height:36px; background:var(--yellow); border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:1rem; color:var(--black); font-weight:900; box-shadow:0 2px 12px rgba(255,214,0,0.4); }
+    .nav-logo span { font-weight:700; font-size:1.05rem; letter-spacing:-0.01em; }
+    .nav-logo span b { color:var(--yellow); }
+    .nav-menu { display:flex; align-items:center; gap:4px; list-style:none; }
+    .nav-menu a { display:block; padding:8px 14px; color:rgba(255,255,255,0.7); text-decoration:none; font-size:0.88rem; font-weight:500; border-radius:var(--radius-sm); transition:var(--transition); }
+    .nav-menu a:hover { color:var(--white); background:rgba(255,255,255,0.07); }
+    .nav-cta { margin-left:8px; }
+    .nav-cta .btn { padding:9px 22px; font-size:0.85rem; }
+    .nav-hamburger { display:none; flex-direction:column; gap:5px; cursor:pointer; padding:6px; background:none; border:none; }
+    .nav-hamburger span { display:block; width:24px; height:2px; background:var(--white); border-radius:2px; transition:var(--transition); }
+    .nav-hamburger.open span:nth-child(1) { transform:translateY(7px) rotate(45deg); }
+    .nav-hamburger.open span:nth-child(2) { opacity:0; }
+    .nav-hamburger.open span:nth-child(3) { transform:translateY(-7px) rotate(-45deg); }
+    .mobile-menu { display:none; position:fixed; top:70px; left:0; right:0; background:rgba(17,17,17,0.98); backdrop-filter:blur(20px); padding:16px 24px 24px; border-bottom:1px solid rgba(255,255,255,0.08); z-index:999; flex-direction:column; gap:4px; }
+    .mobile-menu.open { display:flex; }
+    .mobile-menu a { padding:12px 16px; color:rgba(255,255,255,0.8); text-decoration:none; font-size:0.95rem; font-weight:500; border-radius:var(--radius-sm); transition:var(--transition); }
+    .mobile-menu a:hover { background:rgba(255,255,255,0.07); color:var(--white); }
+    .mobile-menu .btn { margin-top:8px; justify-content:center; }
+
+    /* ─── HERO ─── */
+    #home { min-height:100vh; background:var(--black); display:flex; align-items:center; padding:100px 24px 60px; position:relative; overflow:hidden; }
+    .hero-glow { position:absolute; top:-120px; right:-120px; width:600px; height:600px; background:radial-gradient(circle,rgba(255,214,0,0.12) 0%,transparent 70%); pointer-events:none; }
+    .hero-glow-2 { position:absolute; bottom:-80px; left:-80px; width:400px; height:400px; background:radial-gradient(circle,rgba(255,214,0,0.06) 0%,transparent 70%); pointer-events:none; }
+    .hero-grid { display:grid; grid-template-columns:1fr 1fr; gap:64px; align-items:center; max-width:1160px; margin:0 auto; width:100%; position:relative; z-index:1; }
+    .hero-tag { display:inline-flex; align-items:center; gap:8px; background:rgba(255,214,0,0.1); border:1px solid rgba(255,214,0,0.25); color:var(--yellow); font-size:0.76rem; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; padding:6px 14px; border-radius:99px; margin-bottom:24px; }
+    .hero-title { font-size:clamp(2.8rem,5vw,4.2rem); font-weight:900; line-height:1.05; letter-spacing:-0.03em; color:var(--white); margin-bottom:20px; }
+    .hero-title span { color:var(--yellow); }
+    .hero-subtitle { font-size:1.05rem; color:rgba(255,255,255,0.55); font-weight:400; line-height:1.7; max-width:420px; margin-bottom:36px; }
+    .hero-btns { display:flex; gap:12px; flex-wrap:wrap; }
+    .hero-meta { display:flex; gap:28px; margin-top:44px; padding-top:32px; border-top:1px solid rgba(255,255,255,0.08); }
+    .hero-meta-item { display:flex; flex-direction:column; }
+    .hero-meta-item strong { font-size:1.1rem; font-weight:800; color:var(--white); }
+    .hero-meta-item span { font-size:0.75rem; color:rgba(255,255,255,0.4); margin-top:2px; }
+    .hero-mockup { position:relative; display:flex; justify-content:center; align-items:center; }
+    .win-window { background:#1E1E1E; border-radius:12px; box-shadow:0 40px 100px rgba(0,0,0,0.8),0 0 0 1px rgba(255,255,255,0.08); width:100%; max-width:480px; overflow:hidden; animation:floatWindow 6s ease-in-out infinite; }
+    @keyframes floatWindow { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
+    .win-titlebar { background:#141414; padding:12px 16px; display:flex; align-items:center; gap:12px; border-bottom:1px solid rgba(255,255,255,0.06); }
+    .win-dots { display:flex; gap:6px; }
+    .win-dot { width:12px; height:12px; border-radius:50%; }
+    .win-dot-r{background:#FF5F57} .win-dot-y{background:#FEBC2E} .win-dot-g{background:#28C840}
+    .win-title-text { flex:1; text-align:center; font-size:0.75rem; font-weight:500; color:rgba(255,255,255,0.4); letter-spacing:0.02em; }
+    .win-body { padding:20px; display:flex; flex-direction:column; gap:12px; }
+    .win-sidebar-layout { display:flex; gap:14px; }
+    .win-sidebar { width:120px; background:rgba(255,255,255,0.04); border-radius:8px; padding:12px 10px; display:flex; flex-direction:column; gap:6px; flex-shrink:0; }
+    .win-sidebar-item { display:flex; align-items:center; gap:8px; padding:7px 10px; border-radius:6px; font-size:0.7rem; color:rgba(255,255,255,0.5); cursor:pointer; transition:var(--transition); }
+    .win-sidebar-item.active { background:rgba(255,214,0,0.15); color:var(--yellow); }
+    .win-sidebar-item i { font-size:0.75rem; width:14px; text-align:center; }
+    .win-content { flex:1; display:flex; flex-direction:column; gap:10px; }
+    .win-search { background:rgba(255,255,255,0.06); border-radius:6px; padding:8px 12px; display:flex; align-items:center; gap:8px; font-size:0.7rem; color:rgba(255,255,255,0.3); }
+    .win-script-list { display:flex; flex-direction:column; gap:6px; }
+    .win-script { background:rgba(255,255,255,0.04); border-radius:6px; padding:9px 12px; display:flex; align-items:center; justify-content:space-between; border:1px solid rgba(255,255,255,0.05); }
+    .win-script-name { font-size:0.7rem; color:rgba(255,255,255,0.7); font-weight:500; }
+    .win-script-tag { font-size:0.6rem; font-weight:600; padding:2px 7px; border-radius:99px; letter-spacing:0.05em; }
+    .tag-green{background:rgba(40,200,64,0.15);color:#28C840} .tag-yellow{background:rgba(255,214,0,0.15);color:var(--yellow)} .tag-blue{background:rgba(80,140,255,0.15);color:#508CFF}
+    .win-run-btn { background:var(--yellow); color:var(--black); border:none; border-radius:6px; padding:9px 14px; font-size:0.7rem; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:6px; transition:var(--transition); font-family:'Poppins',sans-serif; }
+    .win-status { background:rgba(255,255,255,0.03); border-radius:6px; padding:8px 12px; display:flex; align-items:center; gap:8px; border:1px solid rgba(255,255,255,0.05); }
+    .status-dot { width:7px; height:7px; border-radius:50%; background:#28C840; animation:pulse 2s ease-in-out infinite; box-shadow:0 0 0 2px rgba(40,200,64,0.2); }
+    @keyframes pulse { 0%,100%{transform:scale(1);opacity:1} 50%{transform:scale(1.3);opacity:0.7} }
+    .win-status span { font-size:0.65rem; color:rgba(255,255,255,0.4); }
+    .win-status b { color:#28C840; font-weight:600; }
+    .badge-float { position:absolute; background:rgba(255,255,255,0.05); backdrop-filter:blur(12px); border:1px solid rgba(255,255,255,0.1); border-radius:12px; padding:10px 14px; display:flex; align-items:center; gap:10px; box-shadow:0 8px 32px rgba(0,0,0,0.3); }
+    .badge-float-1 { top:-20px; right:-30px; animation:floatBadge1 5s ease-in-out infinite; }
+    .badge-float-2 { bottom:20px; left:-40px; animation:floatBadge2 5s ease-in-out infinite 1s; }
+    @keyframes floatBadge1 { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-8px)} }
+    @keyframes floatBadge2 { 0%,100%{transform:translateY(0)} 50%{transform:translateY(6px)} }
+    .badge-icon { width:32px; height:32px; border-radius:8px; display:flex; align-items:center; justify-content:center; font-size:0.85rem; }
+    .badge-icon-yellow{background:rgba(255,214,0,0.2);color:var(--yellow)} .badge-icon-green{background:rgba(40,200,64,0.2);color:#28C840}
+    .badge-text strong { display:block; font-size:0.75rem; color:var(--white); font-weight:700; }
+    .badge-text span { font-size:0.65rem; color:rgba(255,255,255,0.4); }
+
+    /* ─── FEATURES ─── */
+    #features { padding:100px 24px; background:var(--white); }
+    .section-header { text-align:center; margin-bottom:60px; }
+    .section-title { font-size:clamp(1.8rem,3.5vw,2.6rem); font-weight:800; letter-spacing:-0.03em; line-height:1.15; color:var(--black); }
+    .section-desc { color:var(--text-muted); font-size:1rem; line-height:1.7; max-width:520px; margin:12px auto 0; }
+    .features-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:24px; }
+    .feature-card { background:var(--white); border-radius:var(--radius); padding:32px 28px; border:1.5px solid var(--grey); transition:var(--transition); cursor:default; position:relative; overflow:hidden; }
+    .feature-card::before { content:''; position:absolute; inset:0; background:var(--yellow); opacity:0; transition:var(--transition); }
+    .feature-card:hover { border-color:var(--yellow); transform:translateY(-6px); box-shadow:var(--shadow-yellow); }
+    .feature-card:hover::before { opacity:0.04; }
+    .feature-card:hover .feature-icon { background:var(--yellow); color:var(--black); }
+    .feature-icon { width:52px; height:52px; border-radius:14px; background:rgba(255,214,0,0.1); color:var(--yellow); display:flex; align-items:center; justify-content:center; font-size:1.2rem; margin-bottom:20px; transition:var(--transition); position:relative; z-index:1; }
+    .feature-title { font-size:0.98rem; font-weight:700; color:var(--black); margin-bottom:8px; position:relative; z-index:1; }
+    .feature-desc { font-size:0.85rem; color:var(--text-muted); line-height:1.65; position:relative; z-index:1; }
+
+    /* ─── DOWNLOAD ─── */
+    #download { padding:100px 24px; background:var(--black); position:relative; overflow:hidden; }
+    .download-glow { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:700px; height:400px; background:radial-gradient(ellipse,rgba(255,214,0,0.08) 0%,transparent 65%); pointer-events:none; }
+    .download-inner { position:relative; z-index:1; }
+    .download-grid { display:grid; grid-template-columns:1fr auto; gap:64px; align-items:center; }
+    .download-title { font-size:clamp(1.8rem,3.5vw,2.8rem); font-weight:800; color:var(--white); letter-spacing:-0.03em; line-height:1.15; margin-bottom:16px; }
+    .download-title span { color:var(--yellow); }
+    .download-desc { color:rgba(255,255,255,0.45); font-size:0.95rem; line-height:1.7; max-width:460px; margin-bottom:32px; }
+    .download-card { background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:var(--radius); padding:32px; min-width:280px; backdrop-filter:blur(12px); }
+    .download-card-header { display:flex; align-items:center; gap:12px; margin-bottom:24px; }
+    .download-card-icon { width:48px; height:48px; background:var(--yellow); border-radius:12px; display:flex; align-items:center; justify-content:center; font-size:1.2rem; color:var(--black); }
+    .download-card-title { font-size:0.98rem; font-weight:700; color:var(--white); }
+    .download-card-sub { font-size:0.75rem; color:rgba(255,255,255,0.35); }
+    .download-info { display:flex; flex-direction:column; gap:10px; margin-bottom:24px; }
+    .download-info-row { display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.06); }
+    .download-info-row:last-child { border:none; }
+    .download-info-row span { font-size:0.78rem; color:rgba(255,255,255,0.4); }
+    .download-info-row strong { font-size:0.8rem; font-weight:600; color:var(--white); }
+    .download-card .btn { width:100%; justify-content:center; }
+
+    /* ─── STATS ─── */
+    #stats { padding:80px 24px; background:var(--grey-light); }
+    .stats-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:2px; }
+    .stat-card { text-align:center; padding:48px 24px; background:var(--white); position:relative; }
+    .stat-card::after { content:''; position:absolute; bottom:0; left:50%; transform:translateX(-50%); width:40px; height:3px; background:var(--yellow); opacity:0; border-radius:2px; transition:var(--transition); }
+    .stat-card:hover::after { opacity:1; }
+    .stat-num { font-size:2.8rem; font-weight:900; letter-spacing:-0.04em; color:var(--black); line-height:1; }
+    .stat-num span { color:var(--yellow); }
+    .stat-label { font-size:0.8rem; color:var(--text-muted); margin-top:6px; font-weight:500; }
+
+    /* ─── FAQ ─── */
+    #faq { padding:100px 24px; background:var(--white); }
+    .faq-list { max-width:720px; margin:0 auto; display:flex; flex-direction:column; gap:12px; }
+    .faq-item { border:1.5px solid var(--grey); border-radius:var(--radius); overflow:hidden; transition:var(--transition); }
+    .faq-item.open { border-color:var(--yellow); }
+    .faq-question { display:flex; align-items:center; justify-content:space-between; padding:20px 24px; cursor:pointer; gap:16px; background:var(--white); transition:var(--transition); }
+    .faq-question:hover { background:var(--grey-light); }
+    .faq-item.open .faq-question { background:rgba(255,214,0,0.04); }
+    .faq-q-text { font-size:0.95rem; font-weight:600; color:var(--black); }
+    .faq-icon { width:28px; height:28px; border-radius:50%; background:var(--grey); display:flex; align-items:center; justify-content:center; font-size:0.7rem; color:var(--text-muted); flex-shrink:0; transition:var(--transition); }
+    .faq-item.open .faq-icon { background:var(--yellow); color:var(--black); transform:rotate(45deg); }
+    .faq-answer { max-height:0; overflow:hidden; transition:max-height 0.4s ease,padding 0.3s ease; font-size:0.88rem; color:var(--text-muted); line-height:1.7; padding:0 24px; }
+    .faq-item.open .faq-answer { max-height:200px; padding:0 24px 20px; }
+
+    /* ─── SOCIAL ─── */
+    #social { padding:100px 24px; background:var(--black); }
+    .social-header { text-align:center; margin-bottom:56px; }
+    .social-grid { display:flex; justify-content:center; gap:24px; flex-wrap:wrap; }
+    .social-card { display:flex; flex-direction:column; align-items:center; gap:14px; padding:40px 48px; border-radius:var(--radius); background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); text-decoration:none; transition:var(--transition); min-width:180px; position:relative; overflow:hidden; }
+    .social-card::before { content:''; position:absolute; bottom:0; left:0; right:0; height:3px; background:var(--yellow); transform:scaleX(0); transition:var(--transition); }
+    .social-card:hover { transform:translateY(-8px); border-color:rgba(255,255,255,0.2); }
+    .social-card:hover::before { transform:scaleX(1); }
+    .social-card:hover .social-icon { color:var(--yellow); transform:scale(1.1); }
+    .social-icon { font-size:2.4rem; color:rgba(255,255,255,0.6); transition:var(--transition); }
+    .social-name { font-size:0.88rem; font-weight:600; color:rgba(255,255,255,0.6); }
+    .social-card:hover .social-name { color:var(--white); }
+
+    /* ─── GALLERY ─── */
+    #gallery { padding:100px 24px; background:#0d0d0d; position:relative; overflow:hidden; }
+    .gallery-glow { position:absolute; top:0; left:50%; transform:translateX(-50%); width:800px; height:300px; background:radial-gradient(ellipse,rgba(255,214,0,0.07) 0%,transparent 70%); pointer-events:none; }
+    .gallery-inner { position:relative; z-index:1; }
+
+    .gallery-stage {
+      position:relative; width:100%; background:#111; border-radius:18px; overflow:hidden;
+      border:1px solid rgba(255,255,255,0.07); box-shadow:0 40px 100px rgba(0,0,0,0.7);
+    }
+    #gc { display:block; width:100%; height:auto; cursor:default; }
+
+    /* Picture label bottom-left */
+    .gallery-pic-label {
+      position:absolute; bottom:16px; left:18px; z-index:3;
+      font-size:0.76rem; font-weight:700; letter-spacing:0.06em; text-transform:uppercase;
+      color:rgba(255,255,255,0.85); background:rgba(0,0,0,0.55); backdrop-filter:blur(8px);
+      padding:5px 14px; border-radius:99px; border:1px solid rgba(255,255,255,0.1);
+      pointer-events:none; transition:opacity var(--transition);
+    }
+
+    /* Arrows hidden by default, .visible shows them */
+    .gallery-arrow {
+      position:absolute; top:50%; transform:translateY(-50%); z-index:3;
+      width:46px; height:46px; border-radius:50%;
+      background:rgba(0,0,0,0.6); backdrop-filter:blur(10px);
+      border:1px solid rgba(255,255,255,0.14); color:rgba(255,255,255,0.85);
+      display:none; align-items:center; justify-content:center;
+      cursor:pointer; font-size:0.9rem; outline:none; transition:var(--transition);
+    }
+    .gallery-arrow.visible { display:flex; }
+    .gallery-arrow:hover { background:var(--yellow); color:var(--black); border-color:var(--yellow); }
+    #gc-prev { left:14px; }
+    #gc-next { right:14px; }
+
+    /* Dots hidden when 1 photo */
+    .gallery-dots { display:flex; gap:8px; justify-content:center; margin-top:14px; min-height:16px; }
+    .gallery-dot { width:8px; height:8px; border-radius:50%; background:rgba(255,255,255,0.2); cursor:pointer; transition:var(--transition); }
+    .gallery-dot.active { background:var(--yellow); transform:scale(1.3); }
+    .gallery-hint { text-align:center; font-size:0.7rem; color:rgba(255,255,255,0.15); margin-top:10px; }
+
+    /* ─── FOOTER ─── */
+    footer { background:#0A0A0A; padding:60px 24px 24px; border-top:1px solid rgba(255,255,255,0.06); }
+    .footer-grid { display:grid; grid-template-columns:1.8fr 1fr 1fr 1fr; gap:48px; margin-bottom:48px; }
+    .footer-brand .nav-logo { margin-bottom:14px; }
+    .footer-desc { font-size:0.82rem; color:rgba(255,255,255,0.35); line-height:1.7; max-width:220px; }
+    .footer-version { display:inline-block; margin-top:14px; font-size:0.7rem; font-weight:600; color:var(--yellow); background:rgba(255,214,0,0.1); border:1px solid rgba(255,214,0,0.2); padding:3px 10px; border-radius:99px; }
+    .footer-col-title { font-size:0.78rem; font-weight:700; color:rgba(255,255,255,0.5); text-transform:uppercase; letter-spacing:0.1em; margin-bottom:16px; }
+    .footer-links { list-style:none; display:flex; flex-direction:column; gap:10px; }
+    .footer-links a { font-size:0.84rem; color:rgba(255,255,255,0.4); text-decoration:none; transition:var(--transition); }
+    .footer-links a:hover { color:var(--yellow); }
+    .footer-social-links { display:flex; gap:10px; }
+    .footer-social-link { width:36px; height:36px; border-radius:8px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.08); display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,0.5); font-size:0.85rem; text-decoration:none; transition:var(--transition); }
+    .footer-social-link:hover { background:var(--yellow); color:var(--black); border-color:var(--yellow); }
+    .footer-bottom { display:flex; align-items:center; justify-content:space-between; padding-top:24px; border-top:1px solid rgba(255,255,255,0.06); }
+    .footer-copy { font-size:0.78rem; color:rgba(255,255,255,0.25); }
+    .footer-copy b { color:var(--yellow); font-weight:600; }
+
+    /* ─── RESPONSIVE ─── */
+    @media (max-width:1024px) {
+      .hero-grid { grid-template-columns:1fr; gap:48px; }
+      .hero-mockup { order:-1; }
+      .win-window { max-width:420px; }
+      .badge-float { display:none; }
+      .features-grid { grid-template-columns:repeat(2,1fr); }
+      .download-grid { grid-template-columns:1fr; gap:40px; }
+      .download-card { min-width:unset; }
+      .footer-grid { grid-template-columns:1fr 1fr; gap:32px; }
+      .stats-grid { grid-template-columns:repeat(2,1fr); }
+    }
+    @media (max-width:768px) {
+      .nav-menu,.nav-cta { display:none; }
+      .nav-hamburger { display:flex; }
+      #home { padding:100px 24px 60px; }
+      .hero-title { font-size:2.4rem; }
+      .features-grid { grid-template-columns:1fr; }
+      .footer-grid { grid-template-columns:1fr; gap:32px; }
+      .footer-bottom { flex-direction:column; gap:12px; text-align:center; }
+      .social-card { padding:32px 36px; }
+      .stats-grid { grid-template-columns:repeat(2,1fr); }
+      .gallery-bottombar { flex-direction:column; align-items:flex-start; }
+    }
+    @media (max-width:480px) {
+      .hero-meta { flex-direction:column; gap:16px; }
+      .hero-btns { flex-direction:column; }
+      .hero-btns .btn { justify-content:center; }
+    }
+    @media (prefers-reduced-motion:reduce) {
+      *,*::before,*::after { animation:none !important; transition-duration:0.01ms !important; }
+      .fade-in { opacity:1; transform:none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav id="navbar">
+  <div class="nav-inner">
+    <a href="#home" class="nav-logo">
+      <div class="nav-logo-icon">L</div>
+      <span><b>Light</b> Executor</span>
+    </a>
+    <ul class="nav-menu">
+      <li><a href="#home">Home</a></li>
+      <li><a href="#features">Features</a></li>
+      <li><a href="#download">Download</a></li>
+      <li><a href="#gallery">Gallery</a></li>
+      <li><a href="#faq">FAQ</a></li>
+      <li><a href="#social">Contact</a></li>
+    </ul>
+    <div class="nav-cta">
+      <a href="#download" class="btn btn-yellow"><i class="fa-solid fa-download"></i> Download</a>
+    </div>
+    <button class="nav-hamburger" id="hamburger" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</nav>
+<div class="mobile-menu" id="mobile-menu">
+  <a href="#home" class="mobile-link">Home</a>
+  <a href="#features" class="mobile-link">Features</a>
+  <a href="#download" class="mobile-link">Download</a>
+  <a href="#gallery" class="mobile-link">Gallery</a>
+  <a href="#faq" class="mobile-link">FAQ</a>
+  <a href="#social" class="mobile-link">Contact</a>
+  <a href="#download" class="btn btn-yellow"><i class="fa-solid fa-download"></i> Download Now</a>
+</div>
+
+<!-- HERO -->
+<section id="home">
+  <div class="hero-glow"></div>
+  <div class="hero-glow-2"></div>
+  <div class="hero-grid">
+    <div class="hero-text">
+      <div class="hero-tag fade-in"><i class="fa-solid fa-circle"></i> Now Available — v1.0.0</div>
+      <h1 class="hero-title fade-in fade-in-delay-1">Light<br/><span>Executor</span></h1>
+      <p class="hero-subtitle fade-in fade-in-delay-2">Fast, Lightweight, and Powerful Windows Desktop Application. Built for performance, designed for simplicity.</p>
+      <div class="hero-btns fade-in fade-in-delay-3">
+        <a href="#download" class="btn btn-yellow"><i class="fa-solid fa-download"></i> Download Now</a>
+        <a href="#features" class="btn btn-outline"><i class="fa-solid fa-arrow-right"></i> Learn More</a>
+      </div>
+      <div class="hero-meta fade-in fade-in-delay-4">
+        <div class="hero-meta-item"><strong>Free</strong><span>Always & forever</span></div>
+        <div class="hero-meta-item"><strong>Win 10/11</strong><span>Compatible</span></div>
+        <div class="hero-meta-item"><strong>&lt; 10 MB</strong><span>Lightweight</span></div>
+      </div>
+    </div>
+    <div class="hero-mockup fade-in fade-in-delay-2">
+      <div class="badge-float badge-float-1">
+        <div class="badge-icon badge-icon-yellow"><i class="fa-solid fa-bolt"></i></div>
+        <div class="badge-text"><strong>Ultra Fast</strong><span>~50ms inject</span></div>
+      </div>
+      <div class="badge-float badge-float-2">
+        <div class="badge-icon badge-icon-green"><i class="fa-solid fa-shield-halved"></i></div>
+        <div class="badge-text"><strong>Safe & Secure</strong><span>No malware</span></div>
+      </div>
+      <div class="win-window">
+        <div class="win-titlebar">
+          <div class="win-dots"><div class="win-dot win-dot-r"></div><div class="win-dot win-dot-y"></div><div class="win-dot win-dot-g"></div></div>
+          <div class="win-title-text">Light Executor v1.0.0</div>
+          <div style="width:44px"></div>
+        </div>
+        <div class="win-body">
+          <div class="win-sidebar-layout">
+            <div class="win-sidebar">
+              <div class="win-sidebar-item active"><i class="fa-solid fa-house"></i> Home</div>
+              <div class="win-sidebar-item"><i class="fa-solid fa-code"></i> Scripts</div>
+              <div class="win-sidebar-item"><i class="fa-solid fa-gear"></i> Settings</div>
+              <div class="win-sidebar-item"><i class="fa-solid fa-circle-info"></i> About</div>
+            </div>
+            <div class="win-content">
+              <div class="win-search"><i class="fa-solid fa-magnifying-glass" style="font-size:0.65rem;color:rgba(255,255,255,0.2)"></i> Search scripts…</div>
+              <div class="win-script-list">
+                <div class="win-script"><span class="win-script-name"><i class="fa-solid fa-file-code" style="margin-right:6px;color:rgba(255,255,255,0.3);font-size:0.65rem"></i>AutoFarm.lua</span><span class="win-script-tag tag-green">Active</span></div>
+                <div class="win-script"><span class="win-script-name"><i class="fa-solid fa-file-code" style="margin-right:6px;color:rgba(255,255,255,0.3);font-size:0.65rem"></i>SpeedHack.lua</span><span class="win-script-tag tag-yellow">Ready</span></div>
+                <div class="win-script"><span class="win-script-name"><i class="fa-solid fa-file-code" style="margin-right:6px;color:rgba(255,255,255,0.3);font-size:0.65rem"></i>AutoWin.lua</span><span class="win-script-tag tag-blue">Loaded</span></div>
+              </div>
+              <button class="win-run-btn"><i class="fa-solid fa-play"></i> Execute</button>
+            </div>
+          </div>
+          <div class="win-status"><div class="status-dot"></div><span>Status: <b>Injected & Ready</b></span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section id="features">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-label section-label-dark fade-in">Features</div>
+      <h2 class="section-title fade-in fade-in-delay-1">Everything you need,<br/>nothing you don't.</h2>
+      <p class="section-desc fade-in fade-in-delay-2">Designed from the ground up to be fast, reliable, and dead simple to use.</p>
+    </div>
+    <div class="features-grid">
+      <div class="feature-card fade-in fade-in-delay-1">
+        <div class="feature-icon"><i class="fa-solid fa-bolt"></i></div>
+        <div class="feature-title">Lightweight Performance</div>
+        <p class="feature-desc">Under 10MB footprint with minimal RAM usage. Runs fast even on low-end machines without hogging system resources.</p>
+      </div>
+      <div class="feature-card fade-in fade-in-delay-2">
+        <div class="feature-icon"><i class="fa-solid fa-paintbrush"></i></div>
+        <div class="feature-title">Modern Interface</div>
+        <p class="feature-desc">Clean, intuitive UI built for productivity. Dark theme, smooth animations, and a layout that just makes sense.</p>
+      </div>
+      <div class="feature-card fade-in fade-in-delay-3">
+        <div class="feature-icon"><i class="fa-solid fa-shield-halved"></i></div>
+        <div class="feature-title">Secure & Reliable</div>
+        <p class="feature-desc">Zero malware, zero telemetry, zero BS. What you download is exactly what runs — nothing hidden in the background.</p>
+      </div>
+      <div class="feature-card fade-in fade-in-delay-4">
+        <div class="feature-icon"><i class="fa-solid fa-box-open"></i></div>
+        <div class="feature-title">Easy Installation</div>
+        <p class="feature-desc">One-click setup, no admin rights required. Download, run, and you're ready in under 30 seconds flat.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DOWNLOAD -->
+<section id="download">
+  <div class="download-glow"></div>
+  <div class="container download-inner">
+    <div class="download-grid">
+      <div>
+        <div class="section-label fade-in">Download</div>
+        <h2 class="download-title fade-in fade-in-delay-1">Get <span>Light Executor</span><br/>for free today.</h2>
+        <p class="download-desc fade-in fade-in-delay-2">The fastest, cleanest executor for Windows. No subscriptions, no accounts, no catch. Just download and run.</p>
+        <div class="fade-in fade-in-delay-3" style="display:flex;gap:12px;flex-wrap:wrap">
+          <div style="display:flex;align-items:center;gap:8px;color:rgba(255,255,255,0.4);font-size:0.82rem"><i class="fa-brands fa-windows" style="color:var(--yellow)"></i> Windows 10 / 11</div>
+          <div style="display:flex;align-items:center;gap:8px;color:rgba(255,255,255,0.4);font-size:0.82rem"><i class="fa-solid fa-microchip" style="color:var(--yellow)"></i> x64 Architecture</div>
+          <div style="display:flex;align-items:center;gap:8px;color:rgba(255,255,255,0.4);font-size:0.82rem"><i class="fa-solid fa-lock-open" style="color:var(--yellow)"></i> 100% Free</div>
+        </div>
+      </div>
+      <div class="download-card fade-in fade-in-delay-2">
+        <div class="download-card-header">
+          <div class="download-card-icon"><i class="fa-solid fa-download"></i></div>
+          <div><div class="download-card-title">Light Executor</div><div class="download-card-sub">Stable Release</div></div>
+        </div>
+        <div class="download-info">
+          <div class="download-info-row"><span>Version</span><strong>v1.0.0</strong></div>
+          <div class="download-info-row"><span>Platform</span><strong>Win 10 / 11</strong></div>
+          <div class="download-info-row"><span>File Size</span><strong>8.4 MB</strong></div>
+          <div class="download-info-row"><span>Released</span><strong>June 2026</strong></div>
+          <div class="download-info-row"><span>Architecture</span><strong>x64</strong></div>
+        </div>
+        <a href="#" class="btn btn-yellow"><i class="fa-solid fa-download"></i> Download Now</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- STATS -->
+<section id="stats">
+  <div class="container">
+    <div class="stats-grid">
+      <div class="stat-card fade-in"><div class="stat-num"><span id="cnt-downloads">0</span><span style="color:var(--yellow)">+</span></div><div class="stat-label">Total Downloads</div></div>
+      <div class="stat-card fade-in fade-in-delay-1"><div class="stat-num"><span id="cnt-users">0</span><span style="color:var(--yellow)">+</span></div><div class="stat-label">Active Users</div></div>
+      <div class="stat-card fade-in fade-in-delay-2"><div class="stat-num">v<span style="color:var(--yellow)">1.0</span></div><div class="stat-label">Latest Version</div></div>
+      <div class="stat-card fade-in fade-in-delay-3"><div class="stat-num"><span style="color:var(--yellow)">Weekly</span></div><div class="stat-label">Update Frequency</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section id="faq">
+  <div class="container">
+    <div class="section-header">
+      <div class="section-label section-label-dark fade-in">FAQ</div>
+      <h2 class="section-title fade-in fade-in-delay-1">Got questions?<br/>We've got answers.</h2>
+    </div>
+    <div class="faq-list">
+      <div class="faq-item fade-in">
+        <div class="faq-question"><span class="faq-q-text">Is Light Executor free?</span><div class="faq-icon"><i class="fa-solid fa-plus"></i></div></div>
+        <div class="faq-answer">Yes, Light Executor is completely free — no subscriptions, no hidden fees, no premium tiers. Download once and use it forever.</div>
+      </div>
+      <div class="faq-item fade-in fade-in-delay-1">
+        <div class="faq-question"><span class="faq-q-text">Which Windows versions are supported?</span><div class="faq-icon"><i class="fa-solid fa-plus"></i></div></div>
+        <div class="faq-answer">Light Executor supports Windows 10 (64-bit) and Windows 11 (64-bit). We recommend keeping Windows updated for best performance.</div>
+      </div>
+      <div class="faq-item fade-in fade-in-delay-2">
+        <div class="faq-question"><span class="faq-q-text">How do I update the application?</span><div class="faq-icon"><i class="fa-solid fa-plus"></i></div></div>
+        <div class="faq-answer">Light Executor checks for updates automatically on launch. When available, you'll see a notification inside the app.</div>
+      </div>
+      <div class="faq-item fade-in fade-in-delay-3">
+        <div class="faq-question"><span class="faq-q-text">Is it safe to use?</span><div class="faq-icon"><i class="fa-solid fa-plus"></i></div></div>
+        <div class="faq-answer">Absolutely. Zero malware, spyware, or telemetry. Our releases are distributed directly from official channels only. Antivirus flags are false positives — safely add an exception.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SOCIAL -->
+<section id="social">
+  <div class="container">
+    <div class="social-header">
+      <div class="section-label fade-in">Community</div>
+      <h2 class="section-title fade-in fade-in-delay-1" style="color:var(--white)">Join our community.</h2>
+      <p class="section-desc fade-in fade-in-delay-2" style="color:rgba(255,255,255,0.4)">Get support, share scripts, and stay up to date with the latest releases.</p>
+    </div>
+    <div class="social-grid">
+      <a href="https://discord.gg/yourserver" target="_blank" class="social-card fade-in"><i class="fa-brands fa-discord social-icon"></i><span class="social-name">Discord</span></a>
+      <a href="https://github.com/yourusername" target="_blank" class="social-card fade-in fade-in-delay-1"><i class="fa-brands fa-github social-icon"></i><span class="social-name">GitHub</span></a>
+      <a href="https://tiktok.com/@youraccount" target="_blank" class="social-card fade-in fade-in-delay-2"><i class="fa-brands fa-tiktok social-icon"></i><span class="social-name">TikTok</span></a>
+    </div>
+  </div>
+</section>
+
+<!-- GALLERY -->
+<section id="gallery">
+  <div class="gallery-glow"></div>
+  <div class="container gallery-inner">
+    <div class="section-header fade-in">
+      <div class="section-label">Gallery</div>
+      <h2 class="section-title" style="color:var(--white)">Screenshots &amp; Preview.</h2>
+      <p class="section-desc" style="color:rgba(255,255,255,0.35)">Foto aplikasi Light Executor.</p>
+    </div>
+
+    <div class="fade-in fade-in-delay-1">
+      <div class="gallery-stage">
+        <!-- Arrows: hidden by default, JS shows them when PHOTOS.length > 1 -->
+        <button class="gallery-arrow" id="gc-prev"><i class="fa-solid fa-chevron-left"></i></button>
+        <button class="gallery-arrow" id="gc-next"><i class="fa-solid fa-chevron-right"></i></button>
+
+        <!-- Picture label overlay -->
+        <div class="gallery-pic-label" id="gc-label">Picture 1</div>
+
+        <!-- The one canvas -->
+        <canvas id="gc"></canvas>
+      </div>
+
+      <!-- Dot indicators (JS hides when only 1 photo) -->
+      <div class="gallery-dots" id="gc-dots"></div>
+
+      <p class="gallery-hint"><i class="fa-solid fa-circle-info"></i> Admin: tambah foto di array <code>PHOTOS</code> dalam &lt;script&gt;</p>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="container">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <a href="#home" class="nav-logo"><div class="nav-logo-icon">L</div><span style="color:var(--white)"><b>Light</b> Executor</span></a>
+        <p class="footer-desc">Fast, lightweight, and powerful Windows desktop application. Built for performance, designed for simplicity.</p>
+        <span class="footer-version">v1.0.0 Stable</span>
+      </div>
+      <div>
+        <div class="footer-col-title">Quick Links</div>
+        <ul class="footer-links">
+          <li><a href="#home">Home</a></li>
+          <li><a href="#features">Features</a></li>
+          <li><a href="#download">Download</a></li>
+          <li><a href="#gallery">Gallery</a></li>
+          <li><a href="#faq">FAQ</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="footer-col-title">Resources</div>
+        <ul class="footer-links">
+          <li><a href="#">Documentation</a></li>
+          <li><a href="#">Changelog</a></li>
+          <li><a href="#">Bug Report</a></li>
+          <li><a href="#">Source Code</a></li>
+        </ul>
+      </div>
+      <div>
+        <div class="footer-col-title">Follow Us</div>
+        <div class="footer-social-links">
+          <a href="https://discord.gg/yourserver" class="footer-social-link" target="_blank"><i class="fa-brands fa-discord"></i></a>
+          <a href="https://github.com/yourusername" class="footer-social-link" target="_blank"><i class="fa-brands fa-github"></i></a>
+          <a href="https://tiktok.com/@youraccount" class="footer-social-link" target="_blank"><i class="fa-brands fa-tiktok"></i></a>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p class="footer-copy">Copyright © 2026 <b>Light Executor</b>. All rights reserved.</p>
+      <p class="footer-copy">Made with <span style="color:var(--yellow)">♥</span> — Not affiliated with any game developer.</p>
+    </div>
+  </div>
+</footer>
+
+<script>
+/* ══════════════════════════════════════════
+   GALLERY — ADMIN: isi URL foto di sini
+   Default 1 foto. Tambah item untuk lebih banyak,
+   tombol ‹ › dan dot muncul otomatis.
+══════════════════════════════════════════ */
+const PHOTOS = [
+  'https://placehold.co/1280x720/111111/FFD600?text=Picture+1',
+  // Tambah foto kedua di sini, contoh:
+  // 'https://url-foto-kedua-kamu.jpg',
+  // 'https://url-foto-ketiga-kamu.jpg',
+];
+/* ══════════════════════════════════════════ */
+
+// ── Navbar scroll
+const navbar = document.getElementById('navbar');
+window.addEventListener('scroll', () => navbar.classList.toggle('scrolled', window.scrollY > 20));
+
+// ── Hamburger
+const hamburger = document.getElementById('hamburger');
+const mobileMenu = document.getElementById('mobile-menu');
+hamburger.addEventListener('click', () => { hamburger.classList.toggle('open'); mobileMenu.classList.toggle('open'); });
+document.querySelectorAll('.mobile-link, .mobile-menu .btn').forEach(l => l.addEventListener('click', () => { hamburger.classList.remove('open'); mobileMenu.classList.remove('open'); }));
+
+// ── Fade-in
+const observer = new IntersectionObserver(entries => entries.forEach(e => { if (e.isIntersecting) e.target.classList.add('visible'); }), { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+window.addEventListener('load', () => document.querySelectorAll('.fade-in').forEach(el => { if (el.getBoundingClientRect().top < window.innerHeight * 0.92) el.classList.add('visible'); }));
+
+// ── Counter
+function animateCounter(el, target, duration = 1800) {
+  let start = 0;
+  const step = ts => { if (!start) start = ts; const p = Math.min((ts - start) / duration, 1); el.textContent = Math.floor((1 - Math.pow(1 - p, 3)) * target).toLocaleString(); if (p < 1) requestAnimationFrame(step); };
+  requestAnimationFrame(step);
+}
+const statsObs = new IntersectionObserver(entries => { entries.forEach(e => { if (e.isIntersecting) { animateCounter(document.getElementById('cnt-downloads'), 12500); animateCounter(document.getElementById('cnt-users'), 4200); statsObs.disconnect(); } }); }, { threshold: 0.4 });
+const statsSection = document.getElementById('stats');
+if (statsSection) statsObs.observe(statsSection);
+
+// ── FAQ
+document.querySelectorAll('.faq-item').forEach(item => {
+  item.querySelector('.faq-question').addEventListener('click', () => {
+    const open = item.classList.contains('open');
+    document.querySelectorAll('.faq-item.open').forEach(o => o.classList.remove('open'));
+    if (!open) item.classList.add('open');
+  });
+});
+
+/* ══════════════════════════════════════════
+   GALLERY CANVAS — static display, no interaction
+══════════════════════════════════════════ */
+const gc      = document.getElementById('gc');
+const ctx     = gc.getContext('2d');
+const dotsEl  = document.getElementById('gc-dots');
+const labelEl = document.getElementById('gc-label');
+const prevBtn = document.getElementById('gc-prev');
+const nextBtn = document.getElementById('gc-next');
+
+let curIdx = 0;
+const loadedImgs = new Array(PHOTOS.length).fill(null);
+let doneCount = 0;
+
+// Preload all images
+PHOTOS.forEach((src, i) => {
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload  = () => { loadedImgs[i] = img; doneCount++; if (doneCount === PHOTOS.length) initGallery(); };
+  img.onerror = () => {                        doneCount++; if (doneCount === PHOTOS.length) initGallery(); };
+  img.src = src;
+});
+
+function initGallery() {
+  // Show arrows only when more than 1 photo
+  if (PHOTOS.length > 1) {
+    prevBtn.classList.add('visible');
+    nextBtn.classList.add('visible');
+    // Build dot indicators
+    dotsEl.innerHTML = '';
+    PHOTOS.forEach((_, i) => {
+      const d = document.createElement('div');
+      d.className = 'gallery-dot' + (i === 0 ? ' active' : '');
+      d.addEventListener('click', () => goTo(i));
+      dotsEl.appendChild(d);
+    });
+  }
+  sizeAndDraw();
+  window.addEventListener('resize', sizeAndDraw);
+}
+
+function sizeAndDraw() {
+  // Canvas width = stage width, height = 16:9
+  const w = gc.parentElement.clientWidth;
+  gc.width  = w;
+  gc.height = Math.round(w * 9 / 16);
+  drawPhoto();
+}
+
+function drawPhoto() {
+  // Background
+  ctx.fillStyle = '#0e0e0e';
+  ctx.fillRect(0, 0, gc.width, gc.height);
+
+  const img = loadedImgs[curIdx];
+  if (!img) {
+    // Placeholder when image fails
+    ctx.fillStyle = 'rgba(255,214,0,0.08)';
+    ctx.fillRect(0, 0, gc.width, gc.height);
+    ctx.fillStyle = 'rgba(255,214,0,0.4)';
+    ctx.textAlign = 'center';
+    ctx.font = `600 ${Math.round(gc.width * 0.018)}px Poppins, sans-serif`;
+    ctx.fillText('Foto tidak bisa dimuat', gc.width / 2, gc.height / 2);
+    return;
+  }
+
+  // Draw image centered & cover-fit
+  const imgRatio    = img.width / img.height;
+  const stageRatio  = gc.width / gc.height;
+  let sw, sh, sx, sy;
+  if (imgRatio > stageRatio) {
+    // Image wider than stage — fit by height
+    sh = gc.height; sw = sh * imgRatio;
+  } else {
+    // Image taller — fit by width
+    sw = gc.width; sh = sw / imgRatio;
+  }
+  sx = (gc.width  - sw) / 2;
+  sy = (gc.height - sh) / 2;
+  ctx.drawImage(img, sx, sy, sw, sh);
+
+  // Update label: "Picture 1", "Picture 2", …
+  labelEl.textContent = 'Picture ' + (curIdx + 1);
+}
+
+function goTo(idx) {
+  curIdx = (idx + PHOTOS.length) % PHOTOS.length;
+  // Update dots
+  document.querySelectorAll('.gallery-dot').forEach((d, i) => d.classList.toggle('active', i === curIdx));
+  drawPhoto();
+}
+
+prevBtn.addEventListener('click', () => goTo(curIdx - 1));
+nextBtn.addEventListener('click', () => goTo(curIdx + 1));
+
+// Keyboard arrow navigation
+window.addEventListener('keydown', e => {
+  if (PHOTOS.length < 2) return;
+  if (e.key === 'ArrowRight') goTo(curIdx + 1);
+  if (e.key === 'ArrowLeft')  goTo(curIdx - 1);
+});
+</script>
+</body>
+</html>
